@@ -30,7 +30,7 @@ import java.util.Scanner;
  * @Author Tibor Bossanyi
  * @date 2017-08-07
  */
-public class Solution {
+public class GraphSubset {
 
 	public static void main(String[] args) {
 		Scanner in = new Scanner(System.in);
@@ -43,7 +43,6 @@ public class Solution {
         System.out.println(output);
         
         in.close();
-
 	}
 	
 	/*
@@ -70,7 +69,7 @@ public class Solution {
 	 *  => Similar to examples above, this has 62 connected components
 	 */
 	public static long getSubsetOuput(long[] ar) {
-		HashSet<Subset> set = getAllSubset(ar);
+		HashSet<Subset> set = getAllSubset( ar );
 		long sum = 0;	// sum of connected components
 		sum = getConnectedComponents( set );		   
 		return sum;
@@ -87,7 +86,7 @@ public class Solution {
 	 * 
 	 * @see getSubsetOuput for examples
 	 */
-	public static long getConnectedComponents(HashSet<Subset> set) {
+	public static long getConnectedComponents( HashSet<Subset> set) {
 		// create an iterator
 		Iterator<Subset> iterator = set.iterator(); 		     
 
@@ -95,7 +94,7 @@ public class Solution {
 		Subset subset;
 		while (iterator.hasNext()) {
 			subset = (Subset) iterator.next();
-			sum_connections += (64 - getEdgesFromSubset(subset));
+			sum_connections += ( 64 - getEdgesFromSubset(subset) );
 		}
 		return sum_connections;
 	}
@@ -105,7 +104,7 @@ public class Solution {
 	 * 
 	 * @return the number of edges from the subset
 	 */
-	public static long getEdgesFromSubset(Subset subset) {
+	public static long getEdgesFromSubset( Subset subset ) {
 		long[] numbers = subset.getAr();		
 
 		int count_nodes = 0;
@@ -116,7 +115,7 @@ public class Solution {
 		}
 			
 		for (long number : numbers) {
-			count_nodes += getEdgesFromBinary(number);
+			count_nodes += getEdgesFromBinary( number );
 		}
 		int edges = count_nodes - 1;
 		return edges;
@@ -138,7 +137,7 @@ public class Solution {
 	 * @param number
 	 * @return the number of edges of the number 
 	 */
-	public static long getEdgesFromBinary(long number) {
+	public static long getEdgesFromBinary( long number ) {
 		long count_nodes = 0;
 		String binary = Long.toBinaryString(number);
 		int size = binary.length();
@@ -155,7 +154,7 @@ public class Solution {
 	 * 
 	 * @return HashSet array
 	 */
-	public static HashSet<Subset> getAllSubset(long[] ar) {		
+	public static HashSet<Subset> getAllSubset( long[] ar ) {		
 		int size = ar.length;	
 		HashSet<Subset> set = new HashSet<Subset>();
 		
@@ -221,6 +220,5 @@ class Subset {
 	 */
 	public long[] getAr() {
 		return this.ar;
-	}
-	
+	}	
 }
