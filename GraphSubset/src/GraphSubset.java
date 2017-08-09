@@ -1,6 +1,8 @@
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /*
  * GRAPH - Subset Component
@@ -69,7 +71,7 @@ public class GraphSubset {
 	 *  => Similar to examples above, this has 62 connected components
 	 */
 	public static long getSubsetOuput(long[] ar) {
-		HashSet<Subset> set = getAllSubset( ar );
+		HashSet<String> set = getAllSubset( ar );
 		long sum = 0;	// sum of connected components
 		sum = getConnectedComponents( set );		   
 		return sum;
@@ -86,14 +88,14 @@ public class GraphSubset {
 	 * 
 	 * @see getSubsetOuput for examples
 	 */
-	public static long getConnectedComponents( HashSet<Subset> set) {
+	public static long getConnectedComponents( HashSet<String> set) {
 		// create an iterator
-		Iterator<Subset> iterator = set.iterator(); 		     
+		Iterator<String> iterator = set.iterator(); 		     
 
 		long sum_connections = 0;
-		Subset subset;
+		String subset;
 		while (iterator.hasNext()) {
-			subset = (Subset) iterator.next();
+			subset = (String) iterator.next();
 			sum_connections += ( 64 - getEdgesFromSubset(subset) );
 		}
 		return sum_connections;
@@ -104,8 +106,8 @@ public class GraphSubset {
 	 * 
 	 * @return the number of edges from the subset
 	 */
-	public static long getEdgesFromSubset( Subset subset ) {
-		long[] numbers = subset.getAr();		
+	public static long getEdgesFromSubset( String subset ) {
+		long[] numbers = getLongArrayFromSubset( subset );
 
 		int count_nodes = 0;
 		
@@ -115,7 +117,7 @@ public class GraphSubset {
 		}
 			
 		for (long number : numbers) {
-			count_nodes += getEdgesFromBinary( number );
+			count_nodes += getNodesFromBinary( number );
 		}
 		int edges = count_nodes - 1;
 		return edges;
@@ -137,7 +139,7 @@ public class GraphSubset {
 	 * @param number
 	 * @return the number of edges of the number 
 	 */
-	public static long getEdgesFromBinary( long number ) {
+	public static long getNodesFromBinary( long number ) {
 		long count_nodes = 0;
 		String binary = Long.toBinaryString(number);
 		int size = binary.length();
@@ -154,71 +156,115 @@ public class GraphSubset {
 	 * 
 	 * @return HashSet array
 	 */
-	public static HashSet<Subset> getAllSubset( long[] ar ) {		
-		int size = ar.length;	
-		HashSet<Subset> set = new HashSet<Subset>();
+	public static HashSet<String> getAllSubset( long[] ar ) {		
+		HashSet<String> set = new HashSet<String>();
 		
 		// first: the empty set
-		long[] empty = new long[0];
-		set.add( (Subset) new Subset(empty) );
-		// last: all elements
-		//set.add( (Subset) new Subset(ar) );
-		
-		/* 
-		 * create subsets, begin with 1 (standalone numlets)
-		 */
-		for (int startIndex = 0; startIndex < size; startIndex++) {
-			for (int endIndex = startIndex; endIndex < size; endIndex++) {
-				findSubset(startIndex, endIndex, set, ar);
-			}
-		}
+		String empty = "";
+		set.add( empty );
+			
+		findSubsets(set, ar);
 		
 		return set;
 	}
 	
 	/*
-	 * Create one subset from @param startIndex to @param endIndex
-	 * @param set where the created subset is stored
-	 * @param ar the original array from input
+	 * We create from the long array a string pattern which can be check 
+	 * against regex.
+	 * The template of the string pattern is: .<number>{1,6}.
 	 * 
-	 * @return void since everything is created in the HashSet set, referenced from the caller function
+	 * By shifting of the pattern string we find all subset combinations and add them to
+	 * the HashSet (excludes the duplicates automatically)
+	 * 
+	 *  @param the HashSet which contains the subsets
+	 *  @param long array from the system input
 	 */
-	public static void findSubset(int startIndex, int endIndex, HashSet<Subset> set, long[] ar) {
-		long lSubset[] = new long[endIndex - startIndex + 1]; 
-		int arrayIndex = 0;
-		for (int i = startIndex; i <= endIndex; i++) {
-			lSubset[arrayIndex] = ar[i];
-			arrayIndex++;
-		}
-		set.add( new Subset(lSubset));		
-	}	
+	public static void findSubsets(HashSet<String> set, long[] ar) {
+		String sStringForPattern = getStringForPattern(ar);	
+		//System.out.println( "String input " + sStringForPattern);
+		int length = ar.length;
+		String sPattern = "[.]{1}";
+		for (int j = 0; j < length; j++) {
+			sPattern += "\\d{1,6}[.]{1}";
+			//System.out.println( "pattern " + (sPattern));
+			for (int i = 0; i < length; i++) {
+				Pattern pattern = Pattern.compile(sPattern);
+				Matcher matcher = pattern.matcher(sStringForPattern);
 
-	
-}
+				while(matcher.find()) {
+		            String sSubset = sStringForPattern.substring(matcher.start(), matcher.end());
+		            //System.out.println( "sPattern: " + sPattern + " subset " + (sSubset) + " j: " + j + " i " + i);
+		            
+		            set.add( sSubset );
+		        }
+		        if (j == length - 1) break;
 
-/*
- * Subset object
- * 
- * It contains a subset of numbers in an array
- */
-class Subset {
-	private long ar[];
+		        sStringForPattern = shiftByDot(sStringForPattern);
+			}
+		}	
+	}
 	
 	/*
-	 * constructor with empty array
+	 * create a long array from the string pattern
+	 * 
+	 * Reverse of the function getStringForPattern
+	 * 
+	 * @param string pattern
+	 * 
+	 * @return the long array
 	 */
-	public Subset() {
+	public static long[] getLongArrayFromSubset(String sStringPattern) {
+		String[] sNumbers = sStringPattern.split("[.]{1}");
+		long[] lArray = new long [sNumbers.length - 1]; //because split creates an empty element
 		
+		int count = 0;
+		for (String sElem : sNumbers) {
+			if (!sElem.isEmpty()) {
+				lArray[count] = Long.valueOf(sElem) ;
+				count++;
+			}
+		}
+		return lArray;
 	}
 	
-	public Subset(long[] subset) {
-		this.ar = subset;
-	}
-
 	/*
-	 * getter
+	 * Shift the pattern string numbers to right
+	 * 
+	 * @param the pattern string to shift
+	 * 
+	 * @return the shifted pattern string
 	 */
-	public long[] getAr() {
-		return this.ar;
-	}	
+	public static String shiftByDot(String s) {
+		String[] sNumbers = s.split("[.]{1}");
+		
+		String sTemp = sNumbers[sNumbers.length - 1];
+		sNumbers[sNumbers.length - 1] = sNumbers[0];
+		sNumbers[0] = sTemp;
+		String sNew = ".";
+		for (String sElem : sNumbers) {
+			// at the end we have a dot, and the split function creates an element with it
+			if (!sElem.isEmpty()) {
+				sNew += sElem + ".";
+			}
+		}
+		return sNew;
+	}
+	
+	/*
+	 * Create a pattern from the long array
+	 * 
+	 * example .1.2.3.44.55.
+	 * 
+	 * @return the pattern
+	 */
+	public static String getStringForPattern(long[] ar) {
+		String sForPattern = ".";
+		
+		for (long element : ar) {
+			sForPattern += String.valueOf(element) + ".";
+		}
+		return sForPattern;
+	}
 }
+
+
