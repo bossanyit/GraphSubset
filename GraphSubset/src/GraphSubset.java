@@ -1,3 +1,6 @@
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Scanner;
@@ -37,9 +40,9 @@ public class GraphSubset {
 	public static void main(String[] args) {
 		Scanner in = new Scanner(System.in);
         int n = in.nextInt();
-        long[] ar = new long[n];
+        String[] ar = new String[n];
         for(int i=0;i<n;i++){
-            ar[i]=in.nextInt(); 
+            ar[i]=in.next(); 
         }
         long output = getSubsetOuput(ar); 
         System.out.println(output);
@@ -70,7 +73,7 @@ public class GraphSubset {
 	 * {5, 9} => This has edges (0, 2) and (0, 3) in the graph
 	 *  => Similar to examples above, this has 62 connected components
 	 */
-	public static long getSubsetOuput(long[] ar) {
+	public static long getSubsetOuput(String[] ar) {
 		HashSet<String> set = getAllSubset( ar );
 		long sum = 0;	// sum of connected components
 		sum = getConnectedComponents( set );		   
@@ -93,10 +96,12 @@ public class GraphSubset {
 		Iterator<String> iterator = set.iterator(); 		     
 
 		long sum_connections = 0;
+		long edges = 0;
 		String subset;
 		while (iterator.hasNext()) {
 			subset = (String) iterator.next();
-			sum_connections += ( 64 - getEdgesFromSubset(subset) );
+			edges = getEdgesFromSubset( subset );
+			sum_connections += edges;
 		}
 		return sum_connections;
 	}
@@ -107,20 +112,39 @@ public class GraphSubset {
 	 * @return the number of edges from the subset
 	 */
 	public static long getEdgesFromSubset( String subset ) {
-		long[] numbers = getLongArrayFromSubset( subset );
-
-		int count_nodes = 0;
+		long orig_node_count = 0;
+		BigInteger[] numbers = getLongArrayFromSubset( subset );
+		ArrayList<String> nodes = new ArrayList<String>();
+		long edges = 0;		
 		
 		// this is the empty set
 		if (numbers.length == 0) {
 			return 0;
 		}
 			
-		for (long number : numbers) {
-			count_nodes += getNodesFromBinary( number );
+		ArrayList<String> listNodes;
+		for ( BigInteger number : numbers ) {
+			listNodes = getNodesFromBinary( number );
+			orig_node_count++;
+			nodes.addAll( listNodes );
 		}
-		int edges = count_nodes - 1;
+
+		// Sorting with lambda expression	
+		Collections.sort( nodes, (node1, node2) -> node1.compareTo( node2 ) );		
+		
+		nodes = normalizeNodes( nodes );
+		
+		edges = (long)64 - orig_node_count + (long)nodes.size() - 1;
 		return edges;
+	}
+	
+	/*
+	 * For test lambda expression sort
+	 */
+	public static ArrayList<String> sortArray (ArrayList<String> nodes) {
+		// Sorting with lambda expression	
+		Collections.sort( nodes, (node1, node2) -> node1.compareTo( node2 ) );
+		return nodes;
 	}
 	
 	/* 
@@ -130,25 +154,126 @@ public class GraphSubset {
 	 * 
 	 * 7 binary is 00000111
 	 * it has 3 nodes: 1, 2, 4
-	 * it has 2 edges between the 3 nodes
+	 * it has 1 edge {1,2} {1,3} {2,3} => {1,2,3}
 	 * 
 	 * 2 binary is 000000010
 	 * it has 1 node: 2
 	 * it has 0 edges 
 	 * 
 	 * @param number
-	 * @return the number of edges of the number 
+	 * @return the nodes of the graph 
 	 */
-	public static long getNodesFromBinary( long number ) {
-		long count_nodes = 0;
-		String binary = Long.toBinaryString(number);
+	public static ArrayList<String> getNodesFromBinary( BigInteger number ) {
+		ArrayList<BigInteger> indexes = new ArrayList<BigInteger>();
+		
+		String binary = BigIntegertoBinaryString( number );
 		int size = binary.length();
 		for (int i = 0; i < size; i++) {
 			if (binary.charAt(i) == '1') {
-				count_nodes++;
+				indexes.add(BigInteger.valueOf( i ));
 			}
 		}
-		return count_nodes;
+		ArrayList<String>nodes = getAllNodes( indexes ); 
+		
+		return nodes;
+	}
+	
+	/*
+	 * Normalize the nodes in the way that merge the nodes they are connected
+	 * ie. {1,2} {2,4}  => {1,2,4}
+	 * 
+	 * @param input nodes
+	 * @return normalized nodes
+	 */
+	public static ArrayList<String> normalizeNodes( ArrayList<String> nodes ) {
+		ArrayList<String> normalizedNodes = new ArrayList<String>();
+		ArrayList<Integer> deletedIndex = new ArrayList<Integer>(); 
+		 
+		int size = nodes.size();
+		String nodeToCheck;
+		for (int i = 0; i < size; i++) {
+			if (deletedIndex.contains(i)) {
+				continue;
+			}
+			nodeToCheck = nodes.get( i );
+			String[] nodeIndexToCheck = nodeToCheck.split( ";" );
+			if ( existNode(nodeIndexToCheck, normalizedNodes) ) {
+				continue;
+			}
+			for (int j = i; j < size; j++) {
+				String[] nodeIndex = nodes.get( j ).split(";");
+				if (i != j && nodeIndexToCheck[ 1 ].equals( nodeIndex[0]) ) {
+					deletedIndex.add(j);
+					nodeToCheck += ";" + nodeIndex[1];
+					nodeIndexToCheck = nodes.get( j ).split(";");			
+				}
+			}
+			normalizedNodes.add(nodeToCheck);
+		}
+		
+		
+		return normalizedNodes;
+	}
+	
+	/*
+	 * Checks, whether the node exists in the normalized node list
+	 * 
+	 * @param the node to check
+	 * @param the normalized list
+	 * @return true if exists
+	 */
+	public static boolean existNode(String[] nodeToCheckArray, ArrayList<String>normalized) {
+		boolean exists = false;
+		
+		String[] normalizedArray;
+		for (String node: normalized) {
+			normalizedArray = node.split(";");
+			
+			int foundToCheck = 0;
+			for (String nodeToCheck : nodeToCheckArray) {						
+				for (String normalizedNode : normalizedArray) {
+					if (nodeToCheck.equals( normalizedNode) ) {
+						foundToCheck++;
+					}
+				}
+			}			
+			if (foundToCheck == 2) {
+				exists = true;
+				break;
+			}
+		}
+		
+		return exists;
+	}
+	
+	/*
+	 * create all node-pairs (edges) from the graph
+	 * @param indexes from the graph
+	 * 
+	 * @return the created nodes
+	 */
+	public static ArrayList<String> getAllNodes(ArrayList<BigInteger> indexes) {
+		ArrayList<String>nodes = new ArrayList<String>();
+		String sep = ";";		
+		int size = indexes.size();
+		for (int i = 0; i < size; i++) {
+			for (int j = i; j < size; j++) {
+				if (i == j) {
+					continue;
+				}
+				nodes.add(indexes.get(i) + sep + indexes.get(j));
+			}
+		}
+		return nodes;
+	}
+	
+	public static String toBinaryString(BigInteger i) {
+		return i.toString(2);
+     }
+	
+	
+	public static String BigIntegertoBinaryString(BigInteger number) {
+		return toBinaryString(number);
 	}
 	
 	/*
@@ -156,16 +281,52 @@ public class GraphSubset {
 	 * 
 	 * @return HashSet array
 	 */
-	public static HashSet<String> getAllSubset( long[] ar ) {		
+	public static HashSet<String> getAllSubset( String[] ar ) {		
 		HashSet<String> set = new HashSet<String>();
+		HashSet<String> setIndex = new HashSet<String>();	
+		String[] arIndex = new String[ar.length];
+		
+		for (int i = 0; i < ar.length; i++) {
+			arIndex[ i ] = String.valueOf(i) ;
+		}
 		
 		// first: the empty set
 		String empty = "";
 		set.add( empty );
 			
-		findSubsets(set, ar);
+		// get all indexes as subset
+		findSubsets( setIndex, arIndex );
+		
+		createSubsetsFromIndex( setIndex, set, ar );
 		
 		return set;
+	}
+	
+	/* 
+	 * We created all subset variants from the indexes of the original String array
+	 * 
+	 * Now we create real subset from the index set.
+	 * 
+	 * @param the index list contains all indexes of all subsets
+	 * @param the list of all subset
+	 * @param the original input
+	 * 
+	 */
+	public static void createSubsetsFromIndex( HashSet<String> setIndex, HashSet<String> set, String[] ar ) {
+		String sSubset; // created subset
+		int arrayIndex;
+		for (String sIndex : setIndex) {
+			sSubset = ".";
+			String[] index = sIndex.split("[.]{1}");
+			for (String i : index) {
+				if ( i.isEmpty() ) {
+					continue;
+				}
+				arrayIndex = Integer.valueOf( i );
+				sSubset += ar [ arrayIndex ] + ".";
+			}
+			set.add(sSubset);
+		}
 	}
 	
 	/*
@@ -179,13 +340,13 @@ public class GraphSubset {
 	 *  @param the HashSet which contains the subsets
 	 *  @param long array from the system input
 	 */
-	public static void findSubsets(HashSet<String> set, long[] ar) {
+	public static void findSubsets(HashSet<String> set, String[] ar) {
 		String sStringForPattern = getStringForPattern(ar);	
 		//System.out.println( "String input " + sStringForPattern);
 		int length = ar.length;
 		String sPattern = "[.]{1}";
 		for (int j = 0; j < length; j++) {
-			sPattern += "\\d{1,6}[.]{1}";
+			sPattern += "\\d{1,20}[.]{1}";
 			//System.out.println( "pattern " + (sPattern));
 			for (int i = 0; i < length; i++) {
 				Pattern pattern = Pattern.compile(sPattern);
@@ -213,14 +374,14 @@ public class GraphSubset {
 	 * 
 	 * @return the long array
 	 */
-	public static long[] getLongArrayFromSubset(String sStringPattern) {
+	public static BigInteger[] getLongArrayFromSubset(String sStringPattern) {
 		String[] sNumbers = sStringPattern.split("[.]{1}");
-		long[] lArray = new long [sNumbers.length - 1]; //because split creates an empty element
+		BigInteger[] lArray = new BigInteger [sNumbers.length - 1]; //because split creates an empty element
 		
 		int count = 0;
 		for (String sElem : sNumbers) {
 			if (!sElem.isEmpty()) {
-				lArray[count] = Long.valueOf(sElem) ;
+				lArray[count] = new BigInteger(sElem) ;
 				count++;
 			}
 		}
@@ -257,14 +418,16 @@ public class GraphSubset {
 	 * 
 	 * @return the pattern
 	 */
-	public static String getStringForPattern(long[] ar) {
+	public static String getStringForPattern(String[] ar) {
 		String sForPattern = ".";
 		
-		for (long element : ar) {
+		for (String element : ar) {
 			sForPattern += String.valueOf(element) + ".";
 		}
 		return sForPattern;
 	}
+	
+
 }
 
 
